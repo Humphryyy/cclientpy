@@ -35,9 +35,9 @@ headers = {
     ]
 }
 
-dicte = json.dumps(headers)
+headerjson = json.dumps(headers)
 
-x = newrequest("https://ja3er.com/json", dicte)
+x = newrequest("https://ja3er.com/json", headerjson)
 
 print(x)
 soup = BeautifulSoup(x, 'lxml')
