@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 lib = cdll.LoadLibrary("./main.so")
 lib.cclientpy.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
 lib.cclientpy.restype = ctypes.POINTER(ctypes.c_ubyte*8)
-
+""" THERE IS A BIG MEMORY LEAK BEWARE """
 
 def newrequest(path, lister={}):
     try:
