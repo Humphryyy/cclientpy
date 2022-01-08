@@ -1,23 +1,25 @@
 package main
 
+/*
+#include <stdlib.h>
+*/
+import "C"
+
 import (
-	"C"
-	"encoding/binary"
 	"encoding/json"
 	"io/ioutil"
 	"unsafe"
 
 	http "github.com/Carcraftz/fhttp"
 
-	cclient "github.com/Carcraftz/cclient"
-	tls "github.com/Carcraftz/utls"
-)
-import (
 	"bytes"
 	"compress/gzip"
 	"compress/zlib"
 	"io"
 	"time"
+
+	cclient "github.com/Carcraftz/cclient"
+	tls "github.com/Carcraftz/utls"
 
 	"github.com/andybalholm/brotli"
 )
@@ -25,7 +27,7 @@ import (
 func main() {}
 
 //export SendRequest
-func SendRequest(requestC *C.char) unsafe.Pointer {
+func SendRequest(requestC *C.char) *C.char {
 	requestString := C.GoString(requestC)
 
 	request := Request{}
@@ -40,10 +42,12 @@ func SendRequest(requestC *C.char) unsafe.Pointer {
 		panic(err)
 	}
 
-	length := make([]byte, 8)
+	return C.CString(string(respBytes))
+}
 
-	binary.LittleEndian.PutUint64(length, uint64(len(respBytes)))
-	return C.CBytes(append(length, respBytes...))
+//export FreePTR
+func FreePTR(ptr *C.char) {
+	C.free(unsafe.Pointer(ptr))
 }
 
 func sendRequest(request Request) Response {
@@ -126,7 +130,8 @@ func sendRequest(request Request) Response {
 	}
 
 	return Response{
-		Headers: respHeaders,
-		Body:    string(respBody),
+		StatusCode: resp.StatusCode,
+		Headers:    respHeaders,
+		Body:       string(respBody),
 	}
 }

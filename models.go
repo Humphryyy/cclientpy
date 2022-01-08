@@ -12,6 +12,7 @@ type Request struct {
 }
 
 type Response struct {
-	Headers [][]string `json:"headers"`
-	Body    string     `json:"body"`
+	StatusCode int        `json:"statusCode"`
+	Headers    [][]string `json:"headers"`
+	Body       string     `json:"body"`
 }
