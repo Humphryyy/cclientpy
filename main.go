@@ -5,92 +5,129 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"io/ioutil"
-	"net/http"
 	"unsafe"
 
-	/* I take no credit for cclient I just had a hard time go getting it and had to change the .mod, sorry x04 */
-	cclient "github.com/IHaveNothingg/cclientwtf"
-	tls "github.com/Titanium-ctrl/utls"
+	http "github.com/Carcraftz/fhttp"
+
+	cclient "github.com/Carcraftz/cclient"
+	tls "github.com/Carcraftz/utls"
+)
+import (
+	"bytes"
+	"compress/gzip"
+	"compress/zlib"
+	"io"
+	"time"
+
+	"github.com/andybalholm/brotli"
 )
 
-var sb string
+func main() {}
 
-type Headers struct {
-	Headers []Header `json:"Headers"`
-}
-type Header struct {
-	Name  string `json:"Name"`
-	Value string `json:"Value"`
-}
+//export SendRequest
+func SendRequest(requestC *C.char) unsafe.Pointer {
+	requestString := C.GoString(requestC)
 
-func Split(str, sep string) []string
+	request := Request{}
+	if err := json.Unmarshal([]byte(requestString), &request); err != nil {
+		panic(err)
+	}
 
-//export cclientpy
-func cclientpy(url *C.char, headersfrompy *C.char) unsafe.Pointer {
-	headers := C.GoString(headersfrompy)
+	response := sendRequest(request)
 
-	s := C.GoString(url)
-
-	request := UrlGET(s, headers)
+	respBytes, err := json.Marshal(response)
+	if err != nil {
+		panic(err)
+	}
 
 	length := make([]byte, 8)
 
-	binary.LittleEndian.PutUint64(length, uint64(len(request)))
-	return C.CBytes(append(length, request...))
+	binary.LittleEndian.PutUint64(length, uint64(len(respBytes)))
+	return C.CBytes(append(length, respBytes...))
 }
 
-func UrlGET(urlsent string, headerslices string) string {
-
-	client, err := cclient.NewClient(tls.HelloChrome_Auto)
-
+func sendRequest(request Request) Response {
+	client, err := cclient.NewClient(tls.HelloChrome_Auto, request.Proxy, request.AllowRedirect, time.Duration(request.Timeout)*time.Millisecond)
 	if err != nil {
-		println(err)
-		return ""
-
+		panic(err)
 	}
 
-	var url = urlsent
-	req, err := http.NewRequest("GET", url, nil)
+	var body io.Reader
+	if request.Body != "" {
+		body = bytes.NewBufferString(request.Body)
+	}
 
+	req, err := http.NewRequest(request.Method, request.URL, body)
 	if err != nil {
-		println(err)
-		return ""
-
+		panic(err)
 	}
 
-	var headers Headers
-
-	fer, err := []byte(headerslices), err
-	if err != nil {
-		println(err)
-		return ""
-
+	headers := http.Header{
+		http.PHeaderOrderKey: request.PseudoHeaderOrder,
 	}
 
-	json.Unmarshal(fer, &headers)
-
-	for i := 0; i < len(headers.Headers); i++ {
-		req.Header.Add(headers.Headers[i].Name, headers.Headers[i].Value)
+	var headerOrder []string
+	for _, headerPair := range request.Headers {
+		headerOrder = append(headerOrder, headerPair[0])
+		headers[headerPair[0]] = []string{headerPair[1]}
 	}
+
+	headers[http.HeaderOrderKey] = headerOrder
+
+	req.Header = headers
 
 	resp, err := client.Do(req)
-
 	if err != nil {
-		println(err)
-		return ""
+		panic(err)
 	}
 
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		println(err)
-		return ""
+	var respBody []byte
+
+	switch resp.Header.Get("Content-Encoding") {
+	case "gzip":
+		reader, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			panic(err)
+		}
+		defer reader.Close()
+
+		respBody, err = ioutil.ReadAll(reader)
+		if err != nil {
+			panic(err)
+		}
+	case "deflate":
+		reader, err := zlib.NewReader(resp.Body)
+		if err != nil {
+			panic(err)
+		}
+		defer reader.Close()
+
+		respBody, err = ioutil.ReadAll(reader)
+		if err != nil {
+			panic(err)
+		}
+	case "br":
+		reader := brotli.NewReader(resp.Body)
+
+		respBody, err = ioutil.ReadAll(reader)
+		if err != nil {
+			panic(err)
+		}
+	default:
+		var err error
+		respBody, err = ioutil.ReadAll(resp.Body)
+		if err != nil {
+			panic(err)
+		}
 	}
 
-	sb := string(body)
+	var respHeaders [][]string
+	for key, value := range resp.Header {
+		respHeaders = append(respHeaders, []string{key, value[0]})
+	}
 
-	return sb
-}
-
-func main() {
+	return Response{
+		Headers: respHeaders,
+		Body:    string(respBody),
+	}
 }
