@@ -114,7 +114,6 @@ func sendRequest(request Request) Response {
 			panic(err)
 		}
 	default:
-		var err error
 		respBody, err = ioutil.ReadAll(resp.Body)
 		if err != nil {
 			panic(err)
