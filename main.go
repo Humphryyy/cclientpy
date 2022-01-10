@@ -7,6 +7,7 @@ import "C"
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"unsafe"
 
@@ -24,7 +25,25 @@ import (
 	"github.com/andybalholm/brotli"
 )
 
-func main() {}
+func main() {
+	for {
+		fmt.Println(sendRequest(Request{
+			URL:           "http://www.httpbin.org/get",
+			Method:        "GET",
+			Headers:       [][]string{},
+			Body:          "",
+			AllowRedirect: true,
+			Proxy:         "",
+			Timeout:       10000,
+			PseudoHeaderOrder: []string{
+				":method",
+				":authority",
+				":scheme",
+				":path",
+			},
+		}))
+	}
+}
 
 //export SendRequest
 func SendRequest(requestC *C.char) *C.char {
@@ -84,6 +103,7 @@ func sendRequest(request Request) Response {
 	if err != nil {
 		panic(err)
 	}
+	defer resp.Body.Close()
 
 	var respBody []byte
 
