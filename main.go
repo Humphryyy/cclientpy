@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"unsafe"
 
 	http "github.com/Carcraftz/fhttp"
 
@@ -62,11 +61,6 @@ func SendRequest(requestC *C.char) *C.char {
 	}
 
 	return C.CString(string(respBytes))
-}
-
-//export FreePTR
-func FreePTR(ptr *C.char) {
-	C.free(unsafe.Pointer(ptr))
 }
 
 func sendRequest(request Request) Response {

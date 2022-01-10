@@ -5,10 +5,6 @@ import json
 lib = cdll.LoadLibrary("./main.so")
 lib.SendRequest.argtypes = [ctypes.c_char_p]
 lib.SendRequest.restype = ctypes.c_char_p
-lib.FreePTR.argtypes = [ctypes.c_char_p]
-
-
-""" THERE IS A BIG MEMORY LEAK, BEWARE """
 
 
 request = json.dumps({
@@ -34,5 +30,3 @@ request = json.dumps({
 while (True):
     resp = lib.SendRequest(request.encode("utf-8"))
     print(resp)
-
-    lib.FreePTR(resp)  # Breaks?
